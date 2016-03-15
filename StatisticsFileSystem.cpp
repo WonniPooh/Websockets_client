@@ -1,0 +1,156 @@
+#include "StatisticsFileSystem.h"
+
+void statistics::StatisticsFileSystem::update_date()
+{
+  the_time = time(NULL);
+  current_date = localtime(&the_time);
+}
+
+void statistics::StatisticsFileSystem::get_username()
+{
+  char char_username[40] = {};
+  getlogin_r(char_username, 40);
+  username.assign(char_username, strlen(char_username));
+}
+
+int statistics::StatisticsFileSystem::directory_exists( const char* path)
+{
+  if ( path == NULL) 
+    return -1;
+
+  DIR *current_dir = opendir (path);
+  int dir_exists = 0;
+
+  if (current_dir != NULL)
+  {
+      dir_exists = 1;    
+      (void) closedir (current_dir);
+  }
+
+  return dir_exists;
+}
+
+void statistics::StatisticsFileSystem::configure_asset_name()
+{
+  current_asset =  current_asset_const + std::to_string(asset_number);
+}
+
+void statistics::StatisticsFileSystem::configure_global_adress()
+{
+  global_adress = home_path + "/" + username + "/" + assets_folder + "/" + current_asset + "/" + years_folder + "/" 
+  + current_year + "/" + months_folder + "/" + current_month + "/" + days_folder + "/" + current_filename_to_use;
+}
+
+void statistics::StatisticsFileSystem::configure_data()
+{
+  current_year = current_year_const + std::to_string(current_date -> tm_year + 1900);
+
+  current_month = current_month_const + std::to_string(current_date -> tm_mon + 1);
+
+  current_filename_to_use = current_asset_const + std::to_string(asset_number) + current_year_const + std::to_string(current_date -> tm_year + 1900) 
+  + current_month_const + std::to_string(current_date -> tm_mon + 1) + "D" + std::to_string(current_date -> tm_mday) + ".txt"; 
+}
+
+void statistics::StatisticsFileSystem::generate_file_path()
+{
+  chdir(home_path.c_str());
+  chdir(username.c_str());
+
+  FOLDER_ACTION(assets_folder);
+  FOLDER_ACTION(current_asset);
+  FOLDER_ACTION(years_folder);
+  FOLDER_ACTION(current_year);
+  FOLDER_ACTION(months_folder);
+  FOLDER_ACTION(current_month);
+  FOLDER_ACTION(days_folder);
+}  
+
+statistics::StatisticsFileSystem::StatisticsFileSystem()
+{
+
+}
+
+statistics::StatisticsFileSystem::StatisticsFileSystem(int asset, std::mutex* mutex_to_use)
+{
+  home_path = "/home";
+  assets_folder ="Assets";
+  current_asset_const = "A";
+  years_folder = "Years";
+  current_year_const = "Y";
+  months_folder = "Month";
+  current_month_const = "M";
+  days_folder = "Days";
+
+  asset_number = asset;
+  current_mutex = mutex_to_use;
+  configure_asset_name();
+  get_username();
+  update_date();
+
+  if(current_mutex)
+    current_mutex  -> lock();
+
+  configure_data();
+
+  if(current_mutex)
+    current_mutex -> unlock();
+
+  generate_file_path();
+  configure_global_adress();
+  prev_sec_hour = 0;
+}
+
+int statistics::StatisticsFileSystem::construct_statistics(int asset, std::mutex* mutex_to_use)
+{
+  home_path = "/home";
+  assets_folder ="Assets";
+  current_asset_const = "A";
+  years_folder = "Years";
+  current_year_const = "Y";
+  months_folder = "Month";
+  current_month_const = "M";
+  days_folder = "Days";
+
+  asset_number = asset;
+  current_mutex = mutex_to_use;
+  configure_asset_name();
+  get_username();
+  update_date();
+
+  if(current_mutex)
+    current_mutex  -> lock();
+
+  configure_data();
+
+  if(current_mutex)
+    current_mutex -> unlock();
+
+  generate_file_path();
+  configure_global_adress();
+  prev_sec_hour = 0;
+}
+
+int statistics::StatisticsFileSystem::update_time()
+{
+  prev_sec_hour = current_date -> tm_hour;
+
+  if((current_date -> tm_hour - prev_sec_hour) < 0)
+  {
+    if(current_mutex)
+      current_mutex -> lock();
+    
+    configure_data();
+    
+    if(current_mutex)
+      current_mutex -> unlock();
+
+    generate_file_path();
+    return 1;
+  }
+  return 0;
+}
+
+std::string statistics::StatisticsFileSystem::get_current_filepath_to_use()
+{
+  return global_adress;
+}
