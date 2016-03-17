@@ -5,7 +5,7 @@
  *
  * g++ test_it_here.c EstablishConnection.cpp ConnectionData.cpp  ParseCmdArgs.cpp -L/usr/local/lib -lwebsockets -pthread -g -std=c++11
  */
- 
+ //TODO: dynamic RECORDS_FILENAME filepath
  // TODO: namespaces for each class
 
 #include <thread>
@@ -98,8 +98,6 @@ int main(int argc, char **argv)
 
       for(int j = 0; j < records_amount; j++);
         wait(NULL);
-
-      printf("WAITING DONE!\n");
     }
     else
     {
