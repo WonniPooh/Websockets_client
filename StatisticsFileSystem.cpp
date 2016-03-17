@@ -70,7 +70,7 @@ statistics::StatisticsFileSystem::StatisticsFileSystem()
 
 }
 
-statistics::StatisticsFileSystem::StatisticsFileSystem(int asset, std::mutex* mutex_to_use)
+statistics::StatisticsFileSystem::StatisticsFileSystem(int asset)
 {
   home_path = "/home";
   assets_folder ="Assets";
@@ -82,25 +82,17 @@ statistics::StatisticsFileSystem::StatisticsFileSystem(int asset, std::mutex* mu
   days_folder = "Days";
 
   asset_number = asset;
-  current_mutex = mutex_to_use;
   configure_asset_name();
   get_username();
   update_date();
-
-  if(current_mutex)
-    current_mutex  -> lock();
-
   configure_data();
-
-  if(current_mutex)
-    current_mutex -> unlock();
-
   generate_file_path();
+
   configure_global_adress();
   prev_sec_hour = 0;
 }
 
-int statistics::StatisticsFileSystem::construct_statistics(int asset, std::mutex* mutex_to_use)
+int statistics::StatisticsFileSystem::construct_statistics(int asset)
 {
   home_path = "/home";
   assets_folder ="Assets";
@@ -112,41 +104,31 @@ int statistics::StatisticsFileSystem::construct_statistics(int asset, std::mutex
   days_folder = "Days";
 
   asset_number = asset;
-  current_mutex = mutex_to_use;
   configure_asset_name();
   get_username();
-  update_date();
-
-  if(current_mutex)
-    current_mutex  -> lock();
-
+  update_date(); 
   configure_data();
-
-  if(current_mutex)
-    current_mutex -> unlock();
-
   generate_file_path();
+
   configure_global_adress();
   prev_sec_hour = 0;
 }
 
 int statistics::StatisticsFileSystem::update_time()
 {
-  prev_sec_hour = current_date -> tm_hour;
+  update_date();
 
   if((current_date -> tm_hour - prev_sec_hour) < 0)
   {
-    if(current_mutex)
-      current_mutex -> lock();
-    
     configure_data();
-    
-    if(current_mutex)
-      current_mutex -> unlock();
-
     generate_file_path();
+    configure_global_adress();
+
     return 1;
   }
+  
+  prev_sec_hour = current_date -> tm_hour;
+
   return 0;
 }
 

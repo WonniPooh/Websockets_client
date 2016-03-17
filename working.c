@@ -44,7 +44,6 @@ static const std::string close_pattern = "\"close\":";
 static statistics::StatisticsFileSystem my_stat;
 int first_price_appeard = 0;
 int current_process_num = 0;
-std::mutex statistics_mutex;
 std::string current_servertime;
 std::string close_price; 
 std::string current_file_pathname;
@@ -99,10 +98,12 @@ int main(int argc, char **argv)
 
       for(int j = 0; j < records_amount; j++);
         wait(NULL);
+
+      printf("WAITING DONE!\n");
     }
     else
     {
-      my_stat.construct_statistics(current_process_num, &statistics_mutex);
+      my_stat.construct_statistics(current_process_num);
       current_file_pathname = my_stat.get_current_filepath_to_use();
       stat_file = fopen(current_file_pathname.c_str(), "a+");
       run_process(NULL, &asset_names_array[current_process_num]);

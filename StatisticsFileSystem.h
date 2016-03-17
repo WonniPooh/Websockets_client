@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <string>
 #include <string.h>
-#include <mutex> 
 #include <sys/stat.h> 
 
 #ifndef FOLDER_ACTION
@@ -25,7 +24,6 @@ namespace statistics
       time_t the_time;
       struct tm* current_date;
 
-      std::mutex* current_mutex;
       std::string home_path;
       std::string username;
       std::string assets_folder;
@@ -60,9 +58,9 @@ namespace statistics
 
       StatisticsFileSystem();
 
-      StatisticsFileSystem(int asset, std::mutex* mutex_to_use);
+      StatisticsFileSystem(int asset);
 
-      int construct_statistics(int asset, std::mutex* mutex_to_use);
+      int construct_statistics(int asset);
       
       std::string get_current_filepath_to_use();
 
