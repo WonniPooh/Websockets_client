@@ -3,9 +3,9 @@
  *
  * Copyright (C) 2016 Alex Serbin
  *
- * g++ test_it_here.c EstablishConnection.cpp ConnectionData.cpp  ParseCmdArgs.cpp -L/usr/local/lib -lwebsockets -pthread -g -std=c++11
+ * g++ test_it_here.c EstablishConnection.cpp ConnectionData.cpp StatisticsFileSystem.cpp  ParseCmdArgs.cpp -L/usr/local/lib -lwebsockets -pthread -g -std=c++11
  */
- //TODO: dynamic RECORDS_FILENAME filepath
+ // TODO: dynamic RECORDS_FILENAME filepath
  // TODO: namespaces for each class
 
 #include <thread>
@@ -26,6 +26,7 @@
 using namespace std;
 
 #define MAX_SERVER_REQUEST_LEN 500
+#define AUTHORIZED_CONTEXT_CLOSE 1
 
 struct pthread_routine_tool 
 {
@@ -38,16 +39,20 @@ static const int ASSETS_ANMOUNT = 20;
 static const char RECORDS_FILENAME[] = "/home/aserbin/Desktop/My_Project/Creation_data";
 
 const int MAX_SERVER_RESPOND_LENGTH = 200;
+const int MAX_ATTEMTS_NUM = 5;
 static const std::string servertime = "\"servertime\":";
 static const std::string price_time = "\"time\":";
 static const std::string close_pattern = "\"close\":";
 static statistics::StatisticsFileSystem my_stat;
+
+int authorized_context_close_flag = 0;
+int reconnection_attempt_num = 0;
 int first_price_appeard = 0;
 int current_process_num = 0;
 std::string current_servertime;
 std::string close_price; 
 std::string current_file_pathname;
-FILE* stat_file;
+FILE* stat_file = NULL;
 
 void delete_bracket(const char* str_to_clean);
 int load_all_names(std::string names[], FILE* file_from);
@@ -57,7 +62,13 @@ static int websocket_write_back(struct lws *wsi_in, char *str_data_to_send);
 static int ws_service_callback(struct lws *wsi,
                                enum lws_callback_reasons reason, 
                                void *user, void *in, size_t len);
-static void close_connection(void* parameter);
+
+//need initialization (must be called first time at the beginning)
+//first time parameter -  EstablishConnection*, next - null
+static void close_connection(void* parameter);        
+static void reconnect(void* parameter);
+
+
 static void set_sigint_handler();
 static void sighandler(int sig);
 
@@ -105,6 +116,7 @@ int main(int argc, char **argv)
       current_file_pathname = my_stat.get_current_filepath_to_use();
       stat_file = fopen(current_file_pathname.c_str(), "a+");
       run_process(NULL, &asset_names_array[current_process_num]);
+      fclose(stat_file);
     }
   }
   else
@@ -148,6 +160,7 @@ int run_process(ParseCmdArgs* parsed_args, std::string* record_name)
   EstablishConnection connection;
 
   close_connection((void*)&connection);
+  reconnect((void*)&connection);
 
   set_sigint_handler();
 
@@ -176,7 +189,7 @@ int run_process(ParseCmdArgs* parsed_args, std::string* record_name)
   }
 
   struct pthread_routine_tool tool;
-  tool.is_there_first_request = con_data.is_there_query();
+    tool.is_there_first_request = con_data.is_there_query();
 
   if(tool.is_there_first_request);
     con_data.get_first_query(tool.first_server_request);
@@ -214,22 +227,52 @@ static int ws_service_callback(struct lws *wsi,
   {
     case LWS_CALLBACK_CLIENT_ESTABLISHED:
         
-      printf("[Main Service] Connect with server success.\n");
+      if(reconnection_attempt_num)
+      {
+        printf("[Main Service] Reconnection success.\n");
+        reconnection_attempt_num = 0;
+      }
+      else
+        printf("[Main Service] Connection with server established.\n");
+      
       connection_flag = 1;
       break;
 
     case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
         
       printf("[Main Service] Connect with server error.\n");
-      printf("%s\n", (char*)in);
-      fclose(stat_file);
+
       connection_flag = 0;
+      
+      if(reconnection_attempt_num < MAX_ATTEMTS_NUM)
+      {
+      	printf("[Main Service] Attempt to reconnect %d...\n", reconnection_attempt_num++ + 1);
+      	reconnect(NULL);
+        close_connection(NULL);
+      }
+      else
+      {
+      	close_connection((void*)AUTHORIZED_CONTEXT_CLOSE);
+      }
+
       break;
 
     case LWS_CALLBACK_CLOSED:                                               //end of websocket session
       
       printf("[Main Service] LWS_CALLBACK_CLOSED\n");
+
       connection_flag = 0;
+      
+      if(reconnection_attempt_num < MAX_ATTEMTS_NUM && !authorized_context_close_flag) 
+      {
+		printf("[Main Service] Attempt to reconnect %d...\n", reconnection_attempt_num++ + 1);
+      	reconnect(NULL);
+        close_connection(NULL);
+      }
+      else
+      {
+      	close_connection((void*)AUTHORIZED_CONTEXT_CLOSE);
+      }
       break;
 
     case LWS_CALLBACK_CLIENT_RECEIVE:
@@ -289,12 +332,6 @@ static int ws_service_callback(struct lws *wsi,
       
       break;
 
-    case LWS_CALLBACK_CLIENT_WRITEABLE :                                    //data has appeared from the server for the client connection,
-                                                                            //it can be found at *in and is len bytes long
-      //printf("[Main Service] On writeable is called. Send byebye message\n");
-      //websocket_write_back(wsi, "Byebye! See you later");
-      break;
-
     default:
       
       break;
@@ -350,10 +387,29 @@ static void close_connection(void* parameter)
     current_connection = (EstablishConnection*)parameter;
   else
   {
-    fclose(stat_file);
-
     if(current_connection)
+    {
+      if(parameter == (void*)AUTHORIZED_CONTEXT_CLOSE)
+        authorized_context_close_flag = 1;
+
       current_connection -> close_connection();
+    }
+  }
+}
+
+static void reconnect(void* parameter)
+{
+  static int call_counter = 0;
+  static EstablishConnection *current_connection = NULL;
+
+  call_counter++;
+
+  if(call_counter == 1 && parameter != NULL)
+    current_connection = (EstablishConnection*)parameter;
+  else
+  {
+    if(current_connection)
+      current_connection -> try_to_reconnect(); 
   }
 }
 
@@ -368,5 +424,5 @@ static void set_sigint_handler()                            // register the sign
 
 static void sighandler(int sig)     
 {
-  close_connection(NULL);
+  close_connection((void*)AUTHORIZED_CONTEXT_CLOSE);
 }

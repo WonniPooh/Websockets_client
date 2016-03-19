@@ -35,19 +35,37 @@ int EstablishConnection::set_protocol_data(struct lws_protocols* protocols, int 
 
 EstablishConnection::EstablishConnection()
 {
+  thread_routine_function_pointer = NULL;
+  ws_service_callback_pointer = NULL;
+  thread_args_struct_pointer = NULL;
+
   context_creation_info = {0};
   client_connect_info = {0};
   protocols[1] = {0};
   protocols[0] = {0};
+  reconnect_attemt = 0;
   force_exit = 0;
   context = NULL;
   wsi = NULL;
 }
 
-int EstablishConnection::connect(int (*ws_service_callback_pointer)(struct lws *, enum lws_callback_reasons, void* , void* , size_t),
+int EstablishConnection::connect(int (*ws_service_callback)(struct lws *, enum lws_callback_reasons, void* , void* , size_t),
             ConnectionData user_data, void* thread_args_struct, void (*thread_routine_function)(void*, struct lws_context*, struct lws*))
 {
-  set_protocol_data(protocols, 0, "", ws_service_callback_pointer, 0, 0, 0, NULL);
+  if(ws_service_callback)
+  {
+    ws_service_callback_pointer = ws_service_callback;
+    set_protocol_data(protocols, 0, "", ws_service_callback_pointer, 0, 0, 0, NULL);
+  }
+  else 
+  {
+    printf("Invalid ws service callback pointer\n");
+    return -1;
+  }
+
+  user_data_backup = user_data;
+
+  thread_args_struct_pointer = thread_args_struct;
 
   set_context_creation_info(&context_creation_info, protocols);
 
@@ -55,7 +73,7 @@ int EstablishConnection::connect(int (*ws_service_callback_pointer)(struct lws *
 
   user_data.construct_creation_info(&client_connect_info, context);
 
-  if (context == NULL) 
+  if(context == NULL) 
   {
     printf("Context is NULL.\n");
     return -1;
@@ -71,7 +89,57 @@ int EstablishConnection::connect(int (*ws_service_callback_pointer)(struct lws *
       return -1;
   }
   
-  std::thread server_responce_service(thread_routine_function, thread_args_struct, context, wsi);
+  if(thread_routine_function)
+  {  
+    thread_routine_function_pointer = thread_routine_function;
+    std::thread server_responce_service(thread_routine_function_pointer, thread_args_struct_pointer, context, wsi);
+    server_responce_service.detach();
+  }
+  else
+  {
+    printf("Invalid thread function pointer!\n");
+    return -1;
+  }
+
+  while(!force_exit)
+  {
+    lws_service(context, 10);                                     //lws_service - Service any pending websocket activity
+  }
+
+  lws_context_destroy(context);
+
+  if(reconnect_attemt)
+  {
+    reconnect_attemt = 0;
+    reconnect();
+  }  
+}
+
+int EstablishConnection::reconnect()
+{
+  force_exit = 0;
+
+  context = lws_create_context(&context_creation_info);           //creates the listening socket and takes care of all initialization in one step
+
+  if(context == NULL) 
+  {
+    printf("Context is NULL.\n");
+    return -1;
+  }
+  else
+    printf("Context created.\n");
+
+  client_connect_info.context = context;
+
+  wsi = lws_client_connect_via_info(&client_connect_info);        //This function creates a connection to a remote server
+
+  if (wsi == NULL) 
+  {
+      printf("Wsi create error.\n");
+      return -1;
+  }
+
+  std::thread server_responce_service(thread_routine_function_pointer, thread_args_struct_pointer, context, wsi);
   server_responce_service.detach();
 
   while(!force_exit)
@@ -80,9 +148,20 @@ int EstablishConnection::connect(int (*ws_service_callback_pointer)(struct lws *
   }
 
   lws_context_destroy(context);
+
+  if(reconnect_attemt)
+  {
+    reconnect_attemt = 0;
+    reconnect();    
+  }
 }
 
 int EstablishConnection::close_connection()
 {
   force_exit = 1;
+}
+
+int EstablishConnection::try_to_reconnect()
+{
+  reconnect_attemt = 1;
 }
