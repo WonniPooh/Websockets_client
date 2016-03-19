@@ -1,19 +1,19 @@
 #include "StatisticsFileSystem.h"
 
-void statistics::StatisticsFileSystem::update_date()
+void wsclient::StatisticsFileSystem::update_date()
 {
   the_time = time(NULL);
   current_date = localtime(&the_time);
 }
 
-void statistics::StatisticsFileSystem::get_username()
+void wsclient::StatisticsFileSystem::get_username()
 {
   char char_username[40] = {};
   getlogin_r(char_username, 40);
   username.assign(char_username, strlen(char_username));
 }
 
-int statistics::StatisticsFileSystem::directory_exists( const char* path)
+int wsclient::StatisticsFileSystem::directory_exists(const char* path)
 {
   if ( path == NULL) 
     return -1;
@@ -30,18 +30,18 @@ int statistics::StatisticsFileSystem::directory_exists( const char* path)
   return dir_exists;
 }
 
-void statistics::StatisticsFileSystem::configure_asset_name()
+void wsclient::StatisticsFileSystem::configure_asset_name()
 {
   current_asset =  current_asset_const + std::to_string(asset_number);
 }
 
-void statistics::StatisticsFileSystem::configure_global_adress()
+void wsclient::StatisticsFileSystem::configure_global_adress()
 {
   global_adress = home_path + "/" + username + "/" + assets_folder + "/" + current_asset + "/" + years_folder + "/" 
   + current_year + "/" + months_folder + "/" + current_month + "/" + days_folder + "/" + current_filename_to_use;
 }
 
-void statistics::StatisticsFileSystem::configure_data()
+void wsclient::StatisticsFileSystem::configure_data()
 {
   current_year = current_year_const + std::to_string(current_date -> tm_year + 1900);
 
@@ -51,7 +51,7 @@ void statistics::StatisticsFileSystem::configure_data()
   + current_month_const + std::to_string(current_date -> tm_mon + 1) + "D" + std::to_string(current_date -> tm_mday) + ".txt"; 
 }
 
-void statistics::StatisticsFileSystem::generate_file_path()
+void wsclient::StatisticsFileSystem::generate_file_path()
 {
   chdir(home_path.c_str());
   chdir(username.c_str());
@@ -65,12 +65,12 @@ void statistics::StatisticsFileSystem::generate_file_path()
   FOLDER_ACTION(days_folder);
 }  
 
-statistics::StatisticsFileSystem::StatisticsFileSystem()
+wsclient::StatisticsFileSystem::StatisticsFileSystem()
 {
 
 }
 
-statistics::StatisticsFileSystem::StatisticsFileSystem(int asset)
+wsclient::StatisticsFileSystem::StatisticsFileSystem(int asset)
 {
   home_path = "/home";
   assets_folder ="Assets";
@@ -92,7 +92,7 @@ statistics::StatisticsFileSystem::StatisticsFileSystem(int asset)
   prev_sec_hour = 0;
 }
 
-int statistics::StatisticsFileSystem::construct_statistics(int asset)
+int wsclient::StatisticsFileSystem::construct_statistics(int asset)
 {
   home_path = "/home";
   assets_folder ="Assets";
@@ -114,7 +114,7 @@ int statistics::StatisticsFileSystem::construct_statistics(int asset)
   prev_sec_hour = 0;
 }
 
-int statistics::StatisticsFileSystem::update_time()
+int wsclient::StatisticsFileSystem::update_time()
 {
   update_date();
 
@@ -132,7 +132,7 @@ int statistics::StatisticsFileSystem::update_time()
   return 0;
 }
 
-std::string statistics::StatisticsFileSystem::get_current_filepath_to_use()
+std::string wsclient::StatisticsFileSystem::get_current_filepath_to_use()
 {
   return global_adress;
 }

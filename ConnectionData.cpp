@@ -1,6 +1,6 @@
 #include "ConnectionData.h"
 
-void ConnectionData::data_dump(FILE* dump, const ConnectionData* current_connection)
+void wsclient::ConnectionData::data_dump(FILE* dump, const ConnectionData* current_connection)
     {
       fprintf(dump, "===================================================================\n\n");
       fprintf(dump, "current connection class adress: %p\n", current_connection);
@@ -17,7 +17,7 @@ void ConnectionData::data_dump(FILE* dump, const ConnectionData* current_connect
       fprintf(dump, "===================================================================\n\n");
     }
 
-int ConnectionData::record_iput_data(char* record_name, char* filename_to_record_in)
+int wsclient::ConnectionData::record_iput_data(char* record_name, char* filename_to_record_in)
 {
   if(!record_name || !filename_to_record_in)
   {
@@ -56,7 +56,7 @@ int ConnectionData::record_iput_data(char* record_name, char* filename_to_record
   }
 }  
 
-int ConnectionData::check_name_existance (char* record_name, FILE* file_check_in)
+int wsclient::ConnectionData::check_name_existance (char* record_name, FILE* file_check_in)
 {
   char current_record_name[MAX_RECORD_LEN] = {};
 
@@ -76,7 +76,7 @@ int ConnectionData::check_name_existance (char* record_name, FILE* file_check_in
   return 0;
 }
 
-int ConnectionData::load_record(FILE* file_get_from, char* record_name)
+int wsclient::ConnectionData::load_record(FILE* file_get_from, char* record_name)
 {
   if(!file_get_from || ! record_name)
     return -1;
@@ -171,7 +171,7 @@ int ConnectionData::load_record(FILE* file_get_from, char* record_name)
   return 0;
 }
 
-void ConnectionData::delete_bracket(const char* str_to_clean)
+void wsclient::ConnectionData::delete_bracket(const char* str_to_clean)
 {
   int str_length = strlen(str_to_clean);
 
@@ -181,7 +181,7 @@ void ConnectionData::delete_bracket(const char* str_to_clean)
     ((char*)str_to_clean)[str_length - 2] = '\0';
 }
 
-void ConnectionData::print_usage()
+void wsclient::ConnectionData::print_usage()
 {
   fprintf(stderr, "Usage: libwebsockets-client(programm name)\n"
       "<server address>(ws://echo.websocket.org)\n" 
@@ -190,7 +190,7 @@ void ConnectionData::print_usage()
       "[-v <ver> (ietf_version)] [-d <log bitfield>]\n");
 }
 
-ConnectionData::ConnectionData()
+wsclient::ConnectionData::ConnectionData()
 {
   connection_origin = "localhost";
   server_path = "/";
@@ -201,7 +201,7 @@ ConnectionData::ConnectionData()
   ssl_used = 0;
 }
 
-void ConnectionData::LoadSession (std::string record_to_load, char* filename_to_open)
+void wsclient::ConnectionData::LoadSession (std::string record_to_load, char* filename_to_open)
 {
   if(!filename_to_open)
   {
@@ -226,7 +226,7 @@ void ConnectionData::LoadSession (std::string record_to_load, char* filename_to_
   fclose(record_filename);
 }
 
-void ConnectionData::CreateSession(ParseCmdArgs args_parsed, char* file_to_record_in)
+void wsclient::ConnectionData::CreateSession(wsclient::ParseCmdArgs args_parsed, char* file_to_record_in)
 {
   const char *parsed_path_ptr = NULL;
   const char *server_address_char_array = NULL;
@@ -270,15 +270,15 @@ void ConnectionData::CreateSession(ParseCmdArgs args_parsed, char* file_to_recor
   server_address = server_address_char_array;
 
   if(args_parsed.get_session_record())
-     record_iput_data(args_parsed.get_char_record_name(), file_to_record_in);
+    record_iput_data(args_parsed.get_char_record_name(), file_to_record_in);
 }
 
-int ConnectionData::is_there_query()
+int wsclient::ConnectionData::is_there_query()
 {
   return is_there_first_query;
 }
 
-int ConnectionData::get_first_query(std::string* str_to_write)
+int wsclient::ConnectionData::get_first_query(std::string* str_to_write)
 {
   if(!is_there_first_query || NULL == str_to_write)
     return -1;
@@ -286,7 +286,7 @@ int ConnectionData::get_first_query(std::string* str_to_write)
     *str_to_write = first_query;
 }
 
-int ConnectionData::get_first_query(char* str_to_write)
+int wsclient::ConnectionData::get_first_query(char* str_to_write)
 {
   if(!is_there_first_query || NULL == str_to_write)
     return -1;
@@ -294,7 +294,7 @@ int ConnectionData::get_first_query(char* str_to_write)
     strncpy(str_to_write, first_query.c_str(), MAX_SERVER_REQUEST_LEN);
 }
 
-int ConnectionData::construct_creation_info(struct lws_client_connect_info* client_connect_info, struct lws_context * context)
+int wsclient::ConnectionData::construct_creation_info(struct lws_client_connect_info* client_connect_info, struct lws_context * context)
 {
   client_connect_info -> address = server_address.c_str();
   client_connect_info -> path = server_path.c_str();

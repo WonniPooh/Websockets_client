@@ -8,12 +8,14 @@
 #include <sys/stat.h> 
 
 #ifndef FOLDER_ACTION
-#define FOLDER_ACTION(str)      if(!directory_exists(str.c_str())){ \
-                                  mkdir(str.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);  }\
+#define FOLDER_ACTION(str)      if(!directory_exists(str.c_str()))\
+                                { \
+                                  mkdir(str.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);\
+                                }\
                                 chdir(str.c_str());
 #endif
 
-namespace statistics
+namespace wsclient
 {
   class StatisticsFileSystem
   {

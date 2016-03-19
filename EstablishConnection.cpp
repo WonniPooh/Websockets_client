@@ -1,6 +1,6 @@
 #include "EstablishConnection.h"
 
-int EstablishConnection::set_context_creation_info(struct lws_context_creation_info* context_creation_info, struct lws_protocols* protocols)
+int wsclient::EstablishConnection::set_context_creation_info(struct lws_context_creation_info* context_creation_info, struct lws_protocols* protocols)
 {
   if(!context_creation_info || !protocols)
     return -1;
@@ -17,7 +17,7 @@ int EstablishConnection::set_context_creation_info(struct lws_context_creation_i
   context_creation_info -> uid = -1;
 }
 
-int EstablishConnection::set_protocol_data(struct lws_protocols* protocols, int prot_num, 
+int wsclient::EstablishConnection::set_protocol_data(struct lws_protocols* protocols, int prot_num, 
                           const char * name, lws_callback_function * callback,  
                           size_t per_session_data_size, size_t rx_buffer_size,
                           unsigned int id, void * user)
@@ -33,7 +33,7 @@ int EstablishConnection::set_protocol_data(struct lws_protocols* protocols, int 
   protocols[prot_num].id = id;
 }
 
-EstablishConnection::EstablishConnection()
+wsclient::EstablishConnection::EstablishConnection()
 {
   thread_routine_function_pointer = NULL;
   ws_service_callback_pointer = NULL;
@@ -49,8 +49,8 @@ EstablishConnection::EstablishConnection()
   wsi = NULL;
 }
 
-int EstablishConnection::connect(int (*ws_service_callback)(struct lws *, enum lws_callback_reasons, void* , void* , size_t),
-            ConnectionData user_data, void* thread_args_struct, void (*thread_routine_function)(void*, struct lws_context*, struct lws*))
+int wsclient::EstablishConnection::connect(int (*ws_service_callback)(struct lws *, enum lws_callback_reasons, void* , void* , size_t),
+            ConnectionData user_data, void* thread_args_struct, void (*thread_routine_function)(void*, struct lws*))
 {
   if(ws_service_callback)
   {
@@ -92,7 +92,7 @@ int EstablishConnection::connect(int (*ws_service_callback)(struct lws *, enum l
   if(thread_routine_function)
   {  
     thread_routine_function_pointer = thread_routine_function;
-    std::thread server_responce_service(thread_routine_function_pointer, thread_args_struct_pointer, context, wsi);
+    std::thread server_responce_service(thread_routine_function_pointer, thread_args_struct_pointer, wsi);
     server_responce_service.detach();
   }
   else
@@ -115,7 +115,7 @@ int EstablishConnection::connect(int (*ws_service_callback)(struct lws *, enum l
   }  
 }
 
-int EstablishConnection::reconnect()
+int wsclient::EstablishConnection::reconnect()
 {
   force_exit = 0;
 
@@ -139,7 +139,7 @@ int EstablishConnection::reconnect()
       return -1;
   }
 
-  std::thread server_responce_service(thread_routine_function_pointer, thread_args_struct_pointer, context, wsi);
+  std::thread server_responce_service(thread_routine_function_pointer, thread_args_struct_pointer, wsi);
   server_responce_service.detach();
 
   while(!force_exit)
@@ -156,12 +156,12 @@ int EstablishConnection::reconnect()
   }
 }
 
-int EstablishConnection::close_connection()
+int wsclient::EstablishConnection::close_connection()
 {
   force_exit = 1;
 }
 
-int EstablishConnection::try_to_reconnect()
+int wsclient::EstablishConnection::try_to_reconnect()
 {
   reconnect_attemt = 1;
 }
