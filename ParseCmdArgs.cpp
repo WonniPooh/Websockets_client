@@ -14,7 +14,7 @@ static struct option options[] =
   { NULL, 0, 0, 0 }
 };
 
-void ParseCmdArgs::print_usage()
+void wsclient::ParseCmdArgs::print_usage()
 {
   fprintf(stderr, "Usage: libwebsockets-client(program name)\n"
       "<server address>(ws://echo.websocket.org)\n" 
@@ -23,7 +23,7 @@ void ParseCmdArgs::print_usage()
       "[-v <ver> (ietf_version)] [-d <log bitfield>]\n");
 }
 
-ParseCmdArgs::ParseCmdArgs()
+wsclient::ParseCmdArgs::ParseCmdArgs()
 {
   load_all = 0;
   log_level = 0;
@@ -34,7 +34,7 @@ ParseCmdArgs::ParseCmdArgs()
   query_existance = 0;
 }
 
-ParseCmdArgs::ParseCmdArgs(int argc, char** argv)
+wsclient::ParseCmdArgs::ParseCmdArgs(int argc, char** argv)
 {
 
   load_all = 0;
@@ -96,62 +96,62 @@ ParseCmdArgs::ParseCmdArgs(int argc, char** argv)
   }
 }
 
-int ParseCmdArgs::get_load_session()
+int wsclient::ParseCmdArgs::get_load_session()
 {
   return load_data;
 }
 
-int ParseCmdArgs::get_port_used()
+int wsclient::ParseCmdArgs::get_port_used()
 {
   return port_used;
 } 
 
-int ParseCmdArgs::get_query_existance()
+int wsclient::ParseCmdArgs::get_query_existance()
 {
   return query_existance;
 }
 
-char* ParseCmdArgs::get_char_first_query()
+char* wsclient::ParseCmdArgs::get_char_first_query()
 {
   return (char*)first_query.c_str();
 }
 
-char* ParseCmdArgs::get_char_server_info()
+char* wsclient::ParseCmdArgs::get_char_server_info()
 {
   return (char*)server_info.c_str();
 }
 
-char* ParseCmdArgs::get_char_record_name()
+char* wsclient::ParseCmdArgs::get_char_record_name()
 {
   return (char*)record_name.c_str();
 }
 
-std::string ParseCmdArgs::get_first_query()
+std::string wsclient::ParseCmdArgs::get_first_query()
 {
   return first_query;
 }
 
-std::string ParseCmdArgs::get_connection_origin()
+std::string wsclient::ParseCmdArgs::get_connection_origin()
 {
   return connection_origin;
 }
 
-std::string ParseCmdArgs::get_server_info()
+std::string wsclient::ParseCmdArgs::get_server_info()
 {
   return server_info;
 }
 
-std::string ParseCmdArgs::get_record_name()
+std::string wsclient::ParseCmdArgs::get_record_name()
 {
   return record_name;
 }
 
-int ParseCmdArgs::get_session_record()
+int wsclient::ParseCmdArgs::get_session_record()
 {
   return session_record;
 }
 
-int ParseCmdArgs::load_all_data()
+int wsclient::ParseCmdArgs::load_all_data()
 {
   return load_all;
 }
