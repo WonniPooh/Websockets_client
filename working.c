@@ -3,10 +3,8 @@
  *
  * Copyright (C) 2016 Alex Serbin
  *
- * g++ test_it_here.c EstablishConnection.cpp ConnectionData.cpp StatisticsFileSystem.cpp  ParseCmdArgs.cpp -L/usr/local/lib -lwebsockets -pthread -g -std=c++11
+ * g++ test_it_here.c EstablishConnection.cpp ConnectionData.cpp StatisticsFileSystem.cpp ParseCmdArgs.cpp -L/usr/local/lib -lwebsockets -pthread -g -std=c++11
  */
- // TODO: dynamic RECORDS_FILENAME filepath
- // TODO: namespaces for each class
 
 #include <thread>
 #include <unistd.h>
@@ -26,6 +24,7 @@
 using namespace std;
 
 #define MAX_SERVER_REQUEST_LEN 500
+#define MAX_PROGRAMM_PATH_LEN  500
 #define AUTHORIZED_CONTEXT_CLOSE 1
 
 struct pthread_routine_tool 
@@ -36,14 +35,15 @@ struct pthread_routine_tool
 
 static int connection_flag = 0;
 static const int ASSETS_ANMOUNT = 20;
-static const char RECORDS_FILENAME[] = "/home/aserbin/Desktop/My_Project/Creation_data";
+static std::string RECORDS_FILENAME;
 
 const int MAX_SERVER_RESPOND_LENGTH = 200;
 const int MAX_ATTEMTS_NUM = 5;
+static const std::string records_file_name = "/Creation_data";
 static const std::string servertime = "\"servertime\":";
 static const std::string price_time = "\"time\":";
 static const std::string close_pattern = "\"close\":";
-static statistics::StatisticsFileSystem my_stat;
+static wsclient::StatisticsFileSystem my_stat;
 
 int authorized_context_close_flag = 0;
 int reconnection_attempt_num = 0;
@@ -51,20 +51,20 @@ int first_price_appeard = 0;
 int current_process_num = 0;
 std::string current_servertime;
 std::string close_price; 
-std::string current_file_pathname;
+std::string current_statistics_file_pathname;
 FILE* stat_file = NULL;
 
-void delete_bracket(const char* str_to_clean);
+int delete_bracket(const char* str_to_clean);
 int load_all_names(std::string names[], FILE* file_from);
-int run_process(ParseCmdArgs* parsed_args, std::string* record_name);
-static void pthread_routine(void *tool_in, struct lws_context *context, struct lws *wsi);
+int run_process(wsclient::ParseCmdArgs* parsed_args, std::string* record_name);
+static void pthread_routine(void *tool_in, struct lws *wsi);
 static int websocket_write_back(struct lws *wsi_in, char *str_data_to_send);
 static int ws_service_callback(struct lws *wsi,
                                enum lws_callback_reasons reason, 
                                void *user, void *in, size_t len);
 
 //need initialization (must be called first time at the beginning)
-//first time parameter -  EstablishConnection*, next - null
+//first time parameter -  EstablishConnection*, next time - null
 static void close_connection(void* parameter);        
 static void reconnect(void* parameter);
 
@@ -74,18 +74,32 @@ static void sighandler(int sig);
 
 int main(int argc, char **argv)
 {
-  ParseCmdArgs parsed_args(argc, argv);
+  pid_t pid = 1;
 
   int records_amount = 0;
 
-  std::string asset_names_array[ASSETS_ANMOUNT];
+  char* getcwd_result_ptr = getcwd(NULL, MAX_PROGRAMM_PATH_LEN);
 
-  pid_t pid = 1;
+  RECORDS_FILENAME = getcwd_result_ptr + records_file_name;
+
+  free(getcwd_result_ptr);
+
+  wsclient::ParseCmdArgs parsed_args(argc, argv);
+
+  std::string asset_names_array[ASSETS_ANMOUNT];
 
   if(parsed_args.load_all_data())
   {
-    FILE* my_file = fopen(RECORDS_FILENAME, "r");
+    FILE* my_file = fopen(RECORDS_FILENAME.c_str(), "r");
+    
+    if(!my_file)
+    {
+      printf("Error opening file with records\n");
+      return -1;
+    }
+    
     records_amount = load_all_names(asset_names_array, my_file);
+    
     fclose(my_file);
 
     for(int i = 0; i < records_amount; i++)
@@ -113,8 +127,15 @@ int main(int argc, char **argv)
     else
     {
       my_stat.construct_statistics(current_process_num);
-      current_file_pathname = my_stat.get_current_filepath_to_use();
-      stat_file = fopen(current_file_pathname.c_str(), "a+");
+      current_statistics_file_pathname = my_stat.get_current_filepath_to_use();
+      stat_file = fopen(current_statistics_file_pathname.c_str(), "a+");
+      
+      if(!stat_file)
+      {
+        printf("Error opening statistics file\n");
+        return -1;
+      }
+
       run_process(NULL, &asset_names_array[current_process_num]);
       fclose(stat_file);
     }
@@ -125,8 +146,13 @@ int main(int argc, char **argv)
   return 0; 
 }
 
-void delete_bracket(const char* str_to_clean)
+int delete_bracket(const char* str_to_clean)
 {
+  if(!str_to_clean)
+  {
+    printf("[Delete bracket]:Invalid string to clean pointer\n");
+    return -1;
+  }
   int str_length = strlen(str_to_clean);
 
   if(((char*)str_to_clean)[str_length - 2] != ']')
@@ -137,6 +163,11 @@ void delete_bracket(const char* str_to_clean)
 
 int load_all_names(string names[], FILE* file_from)
 {
+  if(!file_from)
+  {
+    printf("[Load records names]: Invalid file pointer to read from\n");
+  }
+
   int counter = 0;
 
   char current_name[20] = {};
@@ -154,10 +185,10 @@ int load_all_names(string names[], FILE* file_from)
   return counter;
 }
 
-int run_process(ParseCmdArgs* parsed_args, std::string* record_name)
+int run_process(wsclient::ParseCmdArgs* parsed_args, std::string* record_name)
 {
-  ConnectionData con_data;
-  EstablishConnection connection;
+  wsclient::ConnectionData con_data;
+  wsclient::EstablishConnection connection;
 
   close_connection((void*)&connection);
   reconnect((void*)&connection);
@@ -168,12 +199,12 @@ int run_process(ParseCmdArgs* parsed_args, std::string* record_name)
   {
     if(parsed_args -> get_load_session())
     {
-      con_data.LoadSession(parsed_args -> get_char_record_name(), (char*)RECORDS_FILENAME);
+      con_data.LoadSession(parsed_args -> get_char_record_name(), (char*)RECORDS_FILENAME.c_str());
     }
     else
     {
       if(parsed_args -> get_session_record())
-        con_data.CreateSession(*parsed_args, (char*)RECORDS_FILENAME);
+        con_data.CreateSession(*parsed_args, (char*)RECORDS_FILENAME.c_str());
       else
         con_data.CreateSession(*parsed_args, NULL);
     }
@@ -182,7 +213,7 @@ int run_process(ParseCmdArgs* parsed_args, std::string* record_name)
   {
     if(record_name)
     {
-      con_data.LoadSession(record_name -> c_str(), (char*)RECORDS_FILENAME);
+      con_data.LoadSession(record_name -> c_str(), (char*)RECORDS_FILENAME.c_str());
     }
     else
       return -1;
@@ -199,8 +230,12 @@ int run_process(ParseCmdArgs* parsed_args, std::string* record_name)
 
 static int websocket_write_back(struct lws *wsi_in, char *str_data_to_send) //static functions are functions that are only visible to other functions in the same file
 {
-    if (str_data_to_send == NULL || wsi_in == NULL)
+
+    if(!wsi_in || !str_data_to_send)
+    {
+      printf("Websocket_write_back: Invalid wsi_in or str_data_to_send pointer.\n");
       return -1;
+    }
 
     int bytes_amount_written = 0;
     int string_length = strlen(str_data_to_send);
@@ -280,8 +315,8 @@ static int ws_service_callback(struct lws *wsi,
       if(my_stat.update_time())
       {
         fclose(stat_file);
-        current_file_pathname = my_stat.get_current_filepath_to_use();
-        stat_file = fopen(current_file_pathname.c_str(), "a+");
+        current_statistics_file_pathname = my_stat.get_current_filepath_to_use();
+        stat_file = fopen(current_statistics_file_pathname.c_str(), "a+");
       }
 
       if(strlen((char*)in) < MAX_SERVER_RESPOND_LENGTH)
@@ -340,10 +375,13 @@ static int ws_service_callback(struct lws *wsi,
   return 0;
 }
 
-static void pthread_routine(void *tool_in, struct lws_context *context, struct lws *wsi)
+static void pthread_routine(void *tool_in, struct lws *wsi_pointer)
 {
-  if(NULL == tool_in)
+  if(!tool_in || !wsi_pointer)
+  {
+    printf("Pthread_routine: Invalid tool_in or wsi pinter");
     kill(0, SIGINT);
+  }
  
   char server_request[MAX_SERVER_REQUEST_LEN] = {};
 
@@ -359,9 +397,9 @@ static void pthread_routine(void *tool_in, struct lws_context *context, struct l
 
   if(tool -> is_there_first_request)
   {
-    websocket_write_back(wsi, tool -> first_server_request);
+    websocket_write_back(wsi_pointer, tool -> first_server_request);
   
-    lws_callback_on_writable(wsi);
+    lws_callback_on_writable(wsi_pointer);
   }
 
   /*
@@ -379,12 +417,12 @@ static void pthread_routine(void *tool_in, struct lws_context *context, struct l
 static void close_connection(void* parameter)
 {
   static int call_counter = 0;
-  static EstablishConnection *current_connection = NULL;
+  static wsclient::EstablishConnection *current_connection = NULL;
 
   call_counter++;
 
   if(call_counter == 1 && parameter != NULL)
-    current_connection = (EstablishConnection*)parameter;
+    current_connection = (wsclient::EstablishConnection*)parameter;
   else
   {
     if(current_connection)
@@ -400,12 +438,12 @@ static void close_connection(void* parameter)
 static void reconnect(void* parameter)
 {
   static int call_counter = 0;
-  static EstablishConnection *current_connection = NULL;
+  static wsclient::EstablishConnection *current_connection = NULL;
 
   call_counter++;
 
   if(call_counter == 1 && parameter != NULL)
-    current_connection = (EstablishConnection*)parameter;
+    current_connection = (wsclient::EstablishConnection*)parameter;
   else
   {
     if(current_connection)
