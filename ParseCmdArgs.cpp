@@ -126,6 +126,26 @@ char* ParseCmdArgs::get_char_record_name()
   return (char*)record_name.c_str();
 }
 
+std::string ParseCmdArgs::get_first_query()
+{
+  return first_query;
+}
+
+std::string ParseCmdArgs::get_connection_origin()
+{
+  return connection_origin;
+}
+
+std::string ParseCmdArgs::get_server_info()
+{
+  return server_info;
+}
+
+std::string ParseCmdArgs::get_record_name()
+{
+  return record_name;
+}
+
 int ParseCmdArgs::get_session_record()
 {
   return session_record;

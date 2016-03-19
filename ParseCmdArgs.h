@@ -39,4 +39,9 @@ class ParseCmdArgs
     char* get_char_first_query();
     char* get_char_server_info();
     char* get_char_record_name();
+
+    std::string get_connection_origin();
+    std::string get_first_query();
+    std::string get_server_info();
+    std::string get_record_name();
 };
