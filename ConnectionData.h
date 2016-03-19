@@ -12,8 +12,8 @@
 #define MAX_SERVER_REQUEST_LEN 500
 #endif
 
-#ifndef MAX_SERVER_ADRESS_LEN
-#define MAX_SERVER_ADRESS_LEN  300
+#ifndef MAX_SERVER_ADDRESS_LEN
+#define MAX_SERVER_ADDRESS_LEN  300
 #endif
 
 #ifndef MAX_SERVER_PATH_LEN
@@ -36,11 +36,12 @@ class ConnectionData
 {
   private:
 
-    char first_query[MAX_SERVER_REQUEST_LEN];
-    char connection_origin[MAX_ORIGIN_LEN];
-    char server_path[MAX_SERVER_PATH_LEN];
-    const char* connection_protocol;
-    const char* server_address;
+    std::string server_path;
+    std::string first_query;
+    std::string server_address;
+    std::string connection_origin;
+    std::string connection_protocol;
+
     int  is_there_first_query;
     int  ietf_version;
     int  port_used;
