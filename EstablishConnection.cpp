@@ -12,7 +12,7 @@ int wsclient::EstablishConnection::set_context_creation_info(struct lws_context_
   context_creation_info -> ssl_cert_filepath = NULL;
   context_creation_info -> protocols = protocols;
   context_creation_info -> iface = NULL;
-  context_creation_info -> options = 0;
+  context_creation_info -> options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
   context_creation_info -> gid = -1;
   context_creation_info -> uid = -1;
 }
