@@ -1,5 +1,17 @@
 #include "ConnectionData.h"
 
+static const int MAX_SERVER_REQUEST_LEN = 500;
+
+static const int MAX_SERVER_ADDRESS_LEN = 300;
+
+static const int MAX_SERVER_PATH_LEN    = 300;
+
+static const int MAX_ORIGIN_LEN         = 200;
+
+static const int MAX_RECORD_LEN         = 100;
+
+static const int MAX_PROTOCOL_LEN       = 10;
+
 void wsclient::ConnectionData::data_dump(FILE* dump, const ConnectionData* current_connection)
     {
       fprintf(dump, "===================================================================\n\n");

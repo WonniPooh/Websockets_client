@@ -8,30 +8,6 @@
 #include <unistd.h>
 #include <libwebsockets.h>
 
-#ifndef MAX_SERVER_REQUEST_LEN
-#define MAX_SERVER_REQUEST_LEN 500
-#endif
-
-#ifndef MAX_SERVER_ADDRESS_LEN
-#define MAX_SERVER_ADDRESS_LEN  300
-#endif
-
-#ifndef MAX_SERVER_PATH_LEN
-#define MAX_SERVER_PATH_LEN    300
-#endif
-
-#ifndef MAX_ORIGIN_LEN
-#define MAX_ORIGIN_LEN         200
-#endif
-
-#ifndef MAX_RECORD_LEN
-#define MAX_RECORD_LEN         100
-#endif
-
-#ifndef MAX_PROTOCOL_LEN
-#define MAX_PROTOCOL_LEN        10
-#endif
-
 namespace wsclient
 {
   class ConnectionData
