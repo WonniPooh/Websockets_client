@@ -21,11 +21,12 @@
 #include "EstablishConnection.h"
 #include "StatisticsFileSystem.h"
 
-using namespace std;                      //delete 
-
-#define MAX_SERVER_REQUEST_LEN 500        //define -> const int 
-#define MAX_PROGRAMM_PATH_LEN  500
-#define AUTHORIZED_CONTEXT_CLOSE 1
+const int MAX_SERVER_REQUEST_LEN = 500;        //define -> const int 
+const int MAX_PROGRAMM_PATH_LEN = 500;
+const int AUTHORIZED_CONTEXT_CLOSE = 1;
+const int ASSETS_ANMOUNT = 20;       //txlib -> examples ldview -- graph algorithms doxygen help
+const int MAX_SERVER_RESPOND_LENGTH = 200;                                                          //---use namespase
+const int MAX_RECONNECT_ATTEMPTS_NUM = 5;
 
 struct pthread_routine_tool 
 {
@@ -33,18 +34,15 @@ struct pthread_routine_tool
   int is_there_first_request;
 };
 
-static int connection_flag = 0;           //global variables starts with capital      doxygen.org -> manual   txlib -> help in every function + tx/doc files
-static const int ASSETS_ANMOUNT = 20;     //txlib -> examples ldview -- graph algorithms doxygen help
-static std::string RECORDS_FILENAME;
-                                          //data to stuct -> dynamic array for using threads;
-const int MAX_SERVER_RESPOND_LENGTH = 200;                                                          //---use namespase
-const int MAX_ATTEMTS_NUM = 5;
+                                                                                      //data to stuct -> dynamic array for using threads;
 static const std::string records_file_name = "/Creation_data";
 static const std::string servertime = "\"servertime\":";
 static const std::string price_time = "\"time\":";
 static const std::string close_pattern = "\"close\":";
 static wsclient::StatisticsFileSystem my_stat;
 
+static std::string RECORDS_FILENAME;
+int connection_flag = 0;           //global variables starts with capital      doxygen.org -> manual   txlib -> help in every function + tx/doc files
 int authorized_context_close_flag = 0;
 int reconnection_attempt_num = 0;
 int first_price_appeard = 0;
@@ -64,6 +62,9 @@ static int websocket_write_back(struct lws *wsi_in, char *str_data_to_send);
 static int ws_service_callback(struct lws *wsi,
                                enum lws_callback_reasons reason, 
                                void *user, void *in, size_t len);
+static int record_current_second_data(void* in);
+static void set_sigint_handler();
+static void sighandler(int sig);
 
 //need initialization (must be called first time at the beginning)
 //first time parameter -  EstablishConnection*, next time - null
@@ -71,8 +72,6 @@ static void close_connection(void* parameter);
 static void reconnect(void* parameter);
 
 
-static void set_sigint_handler();
-static void sighandler(int sig);
 
 int main(int argc, char **argv)
 {
@@ -163,7 +162,7 @@ int delete_bracket(const char* str_to_clean)
     ((char*)str_to_clean)[str_length - 2] = '\0';
 }
 
-int load_all_names(string names[], FILE* file_from)
+int load_all_names(std::string names[], FILE* file_from)
 {
   if(!file_from)
   {
@@ -233,27 +232,27 @@ int run_process(wsclient::ParseCmdArgs* parsed_args, std::string* record_name)
 static int websocket_write_back(struct lws *wsi_in, char *str_data_to_send) //static functions are functions that are only visible to other functions in the same file
 {
 
-    if(!wsi_in || !str_data_to_send)
-    {
-      printf("Websocket_write_back: Invalid wsi_in or str_data_to_send pointer.\n");
-      return -1;
-    }
+  if(!wsi_in || !str_data_to_send)
+  {
+    printf("Websocket_write_back: Invalid wsi_in or str_data_to_send pointer.\n");
+    return -1;
+  }
 
-    int bytes_amount_written = 0;
-    int string_length = strlen(str_data_to_send);
-    char *str_to_send_out = NULL;
+  int bytes_amount_written = 0;
+  int string_length = strlen(str_data_to_send);
+  char *str_to_send_out = NULL;
 
-    str_to_send_out = (char*)malloc((LWS_SEND_BUFFER_PRE_PADDING + string_length + LWS_SEND_BUFFER_POST_PADDING) * sizeof(char));
-    //* setup the buffer*/
-    memcpy (str_to_send_out + LWS_SEND_BUFFER_PRE_PADDING, str_data_to_send, string_length);
-    //* write out*/
-    bytes_amount_written = lws_write(wsi_in, (unsigned char*)str_to_send_out + LWS_SEND_BUFFER_PRE_PADDING, string_length, LWS_WRITE_TEXT);
+  str_to_send_out = (char*)malloc((LWS_SEND_BUFFER_PRE_PADDING + string_length + LWS_SEND_BUFFER_POST_PADDING) * sizeof(char));
+  //* setup the buffer*/
+  memcpy (str_to_send_out + LWS_SEND_BUFFER_PRE_PADDING, str_data_to_send, string_length);
+  //* write out*/
+  bytes_amount_written = lws_write(wsi_in, (unsigned char*)str_to_send_out + LWS_SEND_BUFFER_PRE_PADDING, string_length, LWS_WRITE_TEXT);
 
-    printf("[websocket_write_back] %s\n", str_data_to_send);
-    //* free the buffer*/
-    free(str_to_send_out);
+  printf("[websocket_write_back] %s\n", str_data_to_send);
+  //* free the buffer*/
+  free(str_to_send_out);
 
-    return bytes_amount_written;
+  return bytes_amount_written;
 }
 
 static int ws_service_callback(struct lws *wsi,
@@ -281,7 +280,7 @@ static int ws_service_callback(struct lws *wsi,
 
       connection_flag = 0;
       
-      if(reconnection_attempt_num < MAX_ATTEMTS_NUM)
+      if(reconnection_attempt_num < MAX_RECONNECT_ATTEMPTS_NUM)
       {
       	printf("[Main Service] Attempt to reconnect %d...\n", reconnection_attempt_num++ + 1);
       	reconnect(NULL);
@@ -300,9 +299,9 @@ static int ws_service_callback(struct lws *wsi,
 
       connection_flag = 0;
       
-      if(reconnection_attempt_num < MAX_ATTEMTS_NUM && !authorized_context_close_flag) 
+      if(reconnection_attempt_num < MAX_RECONNECT_ATTEMPTS_NUM && !authorized_context_close_flag) 
       {
-		printf("[Main Service] Attempt to reconnect %d...\n", reconnection_attempt_num++ + 1);
+		    printf("[Main Service] Attempt to reconnect %d...\n", reconnection_attempt_num++ + 1);
       	reconnect(NULL);
         close_connection(NULL);
       }
@@ -323,61 +322,7 @@ static int ws_service_callback(struct lws *wsi,
 
       if(strlen((char*)in) < MAX_SERVER_RESPOND_LENGTH)
       {
-        char* position_close_found = NULL;
-        char* last_bracket_position = NULL;
-        char* position_servertime_found = strstr((char*)in, price_time.c_str());
-
-        if(position_servertime_found)
-        {
-          first_price_appeard = 1;
-          
-          position_close_found = strstr((char*)in, close_pattern.c_str());
-          last_bracket_position = position_close_found;
-
-          while(*last_bracket_position != '}')
-            last_bracket_position++;
-          
-          prev_servertime = current_servertime;
-
-          current_servertime.assign(position_servertime_found + price_time.length(), 10);
-
-          if(!!strncmp(current_servertime.c_str(), prev_servertime.c_str(), 10) && const_price_last_second)
-          {
-            fprintf(stat_file, "%s %s\n", prev_servertime.c_str(), close_price.c_str());
-          }
-
-          const_price_last_second = 0;
-          
-          if(position_close_found && last_bracket_position)
-          	close_price.assign(position_close_found + close_pattern.length(), last_bracket_position - (position_close_found + close_pattern.length()) );
-          else
-          	break;
-
-          fprintf(stat_file, "%s %s\n", current_servertime.c_str(), close_price.c_str());
-        }
-        else
-        {
-          int cmp_result = 0;
-
-          position_servertime_found = strstr((char*)in, servertime.c_str());
-          
-          if(position_servertime_found)
-          	cmp_result = strncmp(position_servertime_found + servertime.length(), current_servertime.c_str(), 10);  // 10 is linux time len in sec since 1970 
-          else
-          	break;
-
-          if(cmp_result > 0)
-          {
-            prev_servertime = current_servertime;
-
-            current_servertime.assign(position_servertime_found + servertime.length(), 10);
-            
-            if(first_price_appeard && const_price_last_second)
-              fprintf(stat_file, "%s %s\n", prev_servertime.c_str(), close_price.c_str());
-
-            const_price_last_second = 1;
-          }
-        }
+        record_current_second_data(in);
       } 
       
       break;
@@ -388,6 +333,65 @@ static int ws_service_callback(struct lws *wsi,
   }
 
   return 0;
+}
+
+static int record_current_second_data(void* in)
+{
+  char* position_close_found = NULL;
+  char* last_bracket_position = NULL;
+  char* position_servertime_found = strstr((char*)in, price_time.c_str());
+
+  if(position_servertime_found)
+  {
+    first_price_appeard = 1;
+    
+    position_close_found = strstr((char*)in, close_pattern.c_str());
+    last_bracket_position = position_close_found;
+
+    while(*last_bracket_position != '}')
+      last_bracket_position++;
+    
+    prev_servertime = current_servertime;
+
+    current_servertime.assign(position_servertime_found + price_time.length(), 10);
+
+    if(!!strncmp(current_servertime.c_str(), prev_servertime.c_str(), 10) && const_price_last_second)
+    {
+      fprintf(stat_file, "%s %s\n", prev_servertime.c_str(), close_price.c_str());
+    }
+
+    const_price_last_second = 0;
+    
+    if(position_close_found && last_bracket_position)
+      close_price.assign(position_close_found + close_pattern.length(), last_bracket_position - (position_close_found + close_pattern.length()) );
+    else
+      return 0;
+
+    fprintf(stat_file, "%s %s\n", current_servertime.c_str(), close_price.c_str());
+  }
+  else
+  {
+    int cmp_result = 0;
+
+    position_servertime_found = strstr((char*)in, servertime.c_str());
+    
+    if(position_servertime_found)
+      cmp_result = strncmp(position_servertime_found + servertime.length(), current_servertime.c_str(), 10);  // 10 is linux time len in sec since 1970 
+    else
+      return 0;
+
+    if(cmp_result > 0)
+    {
+      prev_servertime = current_servertime;
+
+      current_servertime.assign(position_servertime_found + servertime.length(), 10);
+      
+      if(first_price_appeard && const_price_last_second)
+        fprintf(stat_file, "%s %s\n", prev_servertime.c_str(), close_price.c_str());
+
+      const_price_last_second = 1;
+    }
+  }
 }
 
 static void pthread_routine(void *tool_in, struct lws *wsi_pointer)
