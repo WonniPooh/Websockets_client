@@ -21,9 +21,9 @@
 #include "EstablishConnection.h"
 #include "StatisticsFileSystem.h"
 
-using namespace std;
+using namespace std;                      //delete 
 
-#define MAX_SERVER_REQUEST_LEN 500
+#define MAX_SERVER_REQUEST_LEN 500        //define -> const int 
 #define MAX_PROGRAMM_PATH_LEN  500
 #define AUTHORIZED_CONTEXT_CLOSE 1
 
@@ -33,11 +33,11 @@ struct pthread_routine_tool
   int is_there_first_request;
 };
 
-static int connection_flag = 0;
-static const int ASSETS_ANMOUNT = 20;
+static int connection_flag = 0;           //global variables starts with capital      doxygen.org -> manual   txlib -> help in every function + tx/doc files
+static const int ASSETS_ANMOUNT = 20;     //txlib -> examples ldview -- graph algorithms doxygen help
 static std::string RECORDS_FILENAME;
-
-const int MAX_SERVER_RESPOND_LENGTH = 200;
+                                          //data to stuct -> dynamic array for using threads;
+const int MAX_SERVER_RESPOND_LENGTH = 200;                                                          //---use namespase
 const int MAX_ATTEMTS_NUM = 5;
 static const std::string records_file_name = "/Creation_data";
 static const std::string servertime = "\"servertime\":";
@@ -49,9 +49,11 @@ int authorized_context_close_flag = 0;
 int reconnection_attempt_num = 0;
 int first_price_appeard = 0;
 int current_process_num = 0;
-std::string current_servertime;
-std::string close_price; 
 std::string current_statistics_file_pathname;
+std::string current_servertime;
+std::string prev_servertime;
+std::string close_price; 
+int const_price_last_second; 
 FILE* stat_file = NULL;
 
 int delete_bracket(const char* str_to_clean);
@@ -321,9 +323,9 @@ static int ws_service_callback(struct lws *wsi,
 
       if(strlen((char*)in) < MAX_SERVER_RESPOND_LENGTH)
       {
-        char* position_servertime_found = strstr((char*)in, price_time.c_str());
         char* position_close_found = NULL;
         char* last_bracket_position = NULL;
+        char* position_servertime_found = strstr((char*)in, price_time.c_str());
 
         if(position_servertime_found)
         {
@@ -335,7 +337,16 @@ static int ws_service_callback(struct lws *wsi,
           while(*last_bracket_position != '}')
             last_bracket_position++;
           
+          prev_servertime = current_servertime;
+
           current_servertime.assign(position_servertime_found + price_time.length(), 10);
+
+          if(!!strncmp(current_servertime.c_str(), prev_servertime.c_str(), 10) && const_price_last_second)
+          {
+            fprintf(stat_file, "%s %s\n", prev_servertime.c_str(), close_price.c_str());
+          }
+
+          const_price_last_second = 0;
           
           if(position_close_found && last_bracket_position)
           	close_price.assign(position_close_found + close_pattern.length(), last_bracket_position - (position_close_found + close_pattern.length()) );
@@ -357,10 +368,14 @@ static int ws_service_callback(struct lws *wsi,
 
           if(cmp_result > 0)
           {
+            prev_servertime = current_servertime;
+
             current_servertime.assign(position_servertime_found + servertime.length(), 10);
             
-            if(first_price_appeard)
-              fprintf(stat_file, "%s %s\n", current_servertime.c_str(), close_price.c_str());
+            if(first_price_appeard && const_price_last_second)
+              fprintf(stat_file, "%s %s\n", prev_servertime.c_str(), close_price.c_str());
+
+            const_price_last_second = 1;
           }
         }
       } 
