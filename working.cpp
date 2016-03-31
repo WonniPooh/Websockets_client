@@ -21,6 +21,14 @@
 #include "EstablishConnection.h"
 #include "StatisticsFileSystem.h"
 
+#include "json11/json11.hpp"
+
+#include <unistd.h>
+#include <time.h>
+#include <assert.h>
+#include <stdint.h>
+#include <inttypes.h>
+
 const int MAX_SERVER_REQUEST_LEN = 500;        //define -> const int 
 const int MAX_PROGRAMM_PATH_LEN = 500;
 const int AUTHORIZED_CONTEXT_CLOSE = 1;
@@ -62,7 +70,7 @@ static int websocket_write_back(struct lws *wsi_in, char *str_data_to_send);
 static int ws_service_callback(struct lws *wsi,
                                enum lws_callback_reasons reason, 
                                void *user, void *in, size_t len);
-static int record_current_second_data(void* in);
+static void record_current_second_data(void* in);
 static void set_sigint_handler();
 static void sighandler(int sig);
 
@@ -312,7 +320,6 @@ static int ws_service_callback(struct lws *wsi,
       break;
 
     case LWS_CALLBACK_CLIENT_RECEIVE:
-      
       if(my_stat.update_time())
       {
         fclose(stat_file);
@@ -335,61 +342,74 @@ static int ws_service_callback(struct lws *wsi,
   return 0;
 }
 
-static int record_current_second_data(void* in)
+struct Record {
+  uint64_t timestamp;
+  double close;
+};
+
+Record last;
+
+static void record_current_second_data(void* in_str)
 {
-  char* position_close_found = NULL;
-  char* last_bracket_position = NULL;
-  char* position_servertime_found = strstr((char*)in, price_time.c_str());
-
-  if(position_servertime_found)
+  /*
   {
-    first_price_appeard = 1;
-    
-    position_close_found = strstr((char*)in, close_pattern.c_str());
-    last_bracket_position = position_close_found;
+    static struct timespec last_ts = {0};
+    struct timespec cur_ts;
+    clock_gettime(CLOCK_REALTIME, &cur_ts);
 
-    while(*last_bracket_position != '}')
-      last_bracket_position++;
-    
-    prev_servertime = current_servertime;
+    double delta = cur_ts.tv_sec + cur_ts.tv_nsec/1e9 - (last_ts.tv_sec + last_ts.tv_nsec/1e9);
+    last_ts = cur_ts;
 
-    current_servertime.assign(position_servertime_found + price_time.length(), 10);
+    if (delta < 2)
+      printf("record_current_second_data: pid %d delta %f data '%s'\n", getpid(), delta, (char*)in);
+    else
+      printf("record_current_second_data: pid %d WARNING delta %f data '%s'\n", getpid(), delta, (char*)in);
+  }
+  */
+  
+  std::string in_error;
+  json11::Json in_json = json11::Json::parse((const char *)in_str, in_error);
+  if (!in_error.empty()) {
+    printf("json '%s' parse error '%s', skipping\n", in_str, in_error.c_str());
+    return;
+  }
 
-    if(!!strncmp(current_servertime.c_str(), prev_servertime.c_str(), 10) && const_price_last_second)
-    {
-      fprintf(stat_file, "%s %s\n", prev_servertime.c_str(), close_price.c_str());
+  assert(in_json.is_object());
+  auto in = in_json.object_items();
+
+  if(in.count("time")) {
+    printf("[pid %d] received data: '%s'\n", getpid(), in_str);
+
+    assert(in["time"].is_number());
+    assert(in.count("close") && in["close"].is_number());
+
+    Record r;
+    r.timestamp = in["time"].number_value();
+    r.close = in["close"].number_value();
+
+    assert(last.timestamp < r.timestamp);
+    if (last.timestamp != 0) {
+      for (uint64_t t = last.timestamp + 1; t <= r.timestamp; ++t) {
+        fprintf(stat_file, "%llu %f\n", t, last.close);
+      }
+      fflush(stat_file);
     }
 
-    const_price_last_second = 0;
-    
-    if(position_close_found && last_bracket_position)
-      close_price.assign(position_close_found + close_pattern.length(), last_bracket_position - (position_close_found + close_pattern.length()) );
-    else
-      return 0;
+    last = r;
+  } else {
+    printf("[pid %d] received non-data: '%s'\n", getpid(), in_str);
 
-    fprintf(stat_file, "%s %s\n", current_servertime.c_str(), close_price.c_str());
-  }
-  else
-  {
-    int cmp_result = 0;
+    assert(in.count("servertime") && in["servertime"].is_number());
+    uint64_t timestamp = in["servertime"].number_value();
 
-    position_servertime_found = strstr((char*)in, servertime.c_str());
-    
-    if(position_servertime_found)
-      cmp_result = strncmp(position_servertime_found + servertime.length(), current_servertime.c_str(), 10);  // 10 is linux time len in sec since 1970 
-    else
-      return 0;
-
-    if(cmp_result > 0)
-    {
-      prev_servertime = current_servertime;
-
-      current_servertime.assign(position_servertime_found + servertime.length(), 10);
-      
-      if(first_price_appeard && const_price_last_second)
-        fprintf(stat_file, "%s %s\n", prev_servertime.c_str(), close_price.c_str());
-
-      const_price_last_second = 1;
+    /* never print _current_ timestamp -- it may get superseded by next "full" data
+     * if the server goes mad */
+    if (last.timestamp != 0) {
+      for (uint64_t t = last.timestamp + 1; t < timestamp; ++t) {
+        fprintf(stat_file, "%llu %f\n", t, last.close);
+        last.timestamp = t;
+      }
+      fflush(stat_file);
     }
   }
 }
