@@ -50,7 +50,7 @@ wsclient::EstablishConnection::EstablishConnection()
 }
 
 int wsclient::EstablishConnection::connect(int (*ws_service_callback)(struct lws *, enum lws_callback_reasons, void* , void* , size_t),
-            ConnectionData user_data, void* thread_args_struct, void (*thread_routine_function)(void*, struct lws*))
+            ConnectionData user_data, void* thread_args_struct, void (*thread_routine_function)(void*, struct lws*), void* creation_userdata)
 {
   if(ws_service_callback)
   {
@@ -71,7 +71,7 @@ int wsclient::EstablishConnection::connect(int (*ws_service_callback)(struct lws
 
   context = lws_create_context(&context_creation_info);           //creates the listening socket and takes care of all initialization in one step
 
-  user_data.construct_creation_info(&client_connect_info, context);
+  user_data.construct_creation_info(&client_connect_info, context, creation_userdata);
 
   if(context == NULL) 
   {
@@ -80,7 +80,7 @@ int wsclient::EstablishConnection::connect(int (*ws_service_callback)(struct lws
   }
   else
     printf("Context created.\n");
-
+ 
   wsi = lws_client_connect_via_info(&client_connect_info);        //This function creates a connection to a remote server
   
   if (wsi == NULL) 
@@ -100,7 +100,7 @@ int wsclient::EstablishConnection::connect(int (*ws_service_callback)(struct lws
     printf("Invalid thread function pointer!\n");
     return -1;
   }
-
+ 
   while(!force_exit)
   {
     lws_service(context, 10);                                     //lws_service - Service any pending websocket activity

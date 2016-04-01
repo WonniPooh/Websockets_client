@@ -52,7 +52,7 @@ namespace wsclient
 
       int get_first_query(char* str_to_write);
 
-      int construct_creation_info(struct lws_client_connect_info* client_connect_info, struct lws_context * context);
+      int construct_creation_info(struct lws_client_connect_info* client_connect_info, struct lws_context * context, void* userdata_to_use);
       
   };
 }

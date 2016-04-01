@@ -306,11 +306,12 @@ int wsclient::ConnectionData::get_first_query(char* str_to_write)
     strncpy(str_to_write, first_query.c_str(), MAX_SERVER_REQUEST_LEN);
 }
 
-int wsclient::ConnectionData::construct_creation_info(struct lws_client_connect_info* client_connect_info, struct lws_context * context)
+int wsclient::ConnectionData::construct_creation_info(struct lws_client_connect_info* client_connect_info, struct lws_context* context, void* userdata_to_use)
 {
   client_connect_info -> address = server_address.c_str();
   client_connect_info -> path = server_path.c_str();
   client_connect_info -> port = port_used;
+  client_connect_info -> userdata = userdata_to_use;
   client_connect_info -> ietf_version_or_minus_one = ietf_version;
   client_connect_info -> host = client_connect_info -> address;
   client_connect_info -> ssl_connection = ssl_used;

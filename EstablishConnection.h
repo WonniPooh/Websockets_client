@@ -42,6 +42,6 @@ namespace wsclient
       int close_connection();  
 
       int connect(int (*ws_service_callback)(struct lws *, enum lws_callback_reasons, void* , void* , size_t),
-                  ConnectionData user_data, void* thread_args_struct, void (*thread_routine_function)(void*, struct lws*));
+                  ConnectionData user_data, void* thread_args_struct, void (*thread_routine_function)(void*, struct lws*), void* creation_userdata);
   };
 }

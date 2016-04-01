@@ -67,13 +67,13 @@ void wsclient::StatisticsFileSystem::generate_file_path()
 
 wsclient::StatisticsFileSystem::StatisticsFileSystem()
 {
-
+                                                                      //litter!!!
 }
 
-wsclient::StatisticsFileSystem::StatisticsFileSystem(int asset)
-{
-  home_path = "/home";
-  assets_folder ="Assets";
+wsclient::StatisticsFileSystem::StatisticsFileSystem(int asset)       //вызов конструкторов по умолчанию  int&* --  ссылка на указатель 
+{  
+  home_path = ("/home");
+  assets_folder = ("Assets");
   current_asset_const = "A";
   years_folder = "Years";
   current_year_const = "Y";
@@ -82,6 +82,7 @@ wsclient::StatisticsFileSystem::StatisticsFileSystem(int asset)
   days_folder = "Days";
 
   asset_number = asset;
+  
   configure_asset_name();
   get_username();
   update_date();

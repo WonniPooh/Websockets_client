@@ -26,10 +26,10 @@ namespace wsclient
       time_t the_time;
       struct tm* current_date;
 
-      std::string home_path;
+      std::string home_path;                                      //use prefics that define that variable belongs to class home_path_ <- cool at the moment
       std::string username;
       std::string assets_folder;
-      std::string current_asset_const;
+      std::string current_asset_const;                            //microsofte use m_ <- member of, QT like my_
       std::string years_folder;
       std::string current_year_const;
       std::string months_folder;
@@ -60,7 +60,7 @@ namespace wsclient
 
       StatisticsFileSystem();
 
-      StatisticsFileSystem(int asset);
+      explicit StatisticsFileSystem(int asset);                            //СОБСТВЕННЫЙ ОПЕРАТОР ПРЕОБРАЗОВАНИЯ ТИПА (НЕЯВНАЯ СМЕНА ТИПА) implicit type conver. operator
 
       int construct_statistics(int asset);
       
